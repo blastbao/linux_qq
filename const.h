@@ -24,6 +24,7 @@ namespace CONST
 	const int REGIST_WAIT_USERPSW  = 4; /* client is at regist state, waiting for user password */
 	const int WAIT_SERVER_RET = 5; /* waiting for the return from server on login or regist */
 	const int COMMUNICATE = 6; /* client is communicating with server */
+	const int QUIT = -1; /* client quit */
 
 /* message */
 	/* message content size */
@@ -38,13 +39,18 @@ namespace CONST
 	/* message buffer queue size */
 	const int MSG_QUEUE_SIZE = 1024;
 	/* message types */
-	char MSG_TYPE_REGIST[MSG_TYPE_SIZE+1] = "regist";
-	char MSG_TYPE_LOGIN[MSG_TYPE_SIZE+1]  = "login";
-	char MSG_TYPE_MSG[MSG_TYPE_SIZE+1]    = "msg";
+	extern char MSG_TYPE_REGIST[];
+	extern char MSG_TYPE_LOGIN[];
+	extern char MSG_TYPE_MSG[];
+	extern char MSG_TYPE_RET_SUCC[];
+	extern char MSG_TYPE_RET_FAIL[];
 
 /* server */
 	/* registed user file */
-	char REGISTED_FILE[] = "registed";
+	extern char REGISTED_FILE[];
+
+/* epoll */
+	const int MAX_EVENTS = 1024;
 };
 
 #endif

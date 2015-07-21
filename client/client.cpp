@@ -3,6 +3,8 @@
 #include	"../msg_util.h"
 #include	"../msg_buffer.h"
 
+#include	"./user_input_util.h"
+
 #include	<sys/select.h>
 
 /*
@@ -25,7 +27,7 @@
 *@return
 	assume this function is always success
 */
-void str_glue(char* s1, char* s2, char delimiter, char* new_str)
+void str_glue(const char* s1, const char* s2, const char delimiter, char* new_str)
 {
 	strcpy(new_str, s1);
 	strcpy(new_str+strlen(new_str)+1, s2);
@@ -33,109 +35,134 @@ void str_glue(char* s1, char* s2, char delimiter, char* new_str)
 }
 
 /*
-*state machine will run one step accroding to [msg, msg_len and state],
-	other params are used to get or hold data.
-*@param conn_fd in
-*@param user_name in,out
-*@param p_msg_buffer out
-*@param wfds out
+*all state transition function by user inputing follow the standard below:
+*-----four params are basic:-----
+*@param msg, msg_len in
+	message from user inputing
+*@param state in, out
+	the current state of client
+*@param name in, out
+	user name
+*-----if user will send message, two another params are needed:-----
+*@param send_msg, send_msg_len out
+	the message user will send
+*-----@return-----
+	true if client succeed to go to next state,
+	false if user inputing is illegal, and the state of client unchanged.
 */
-void state_machine_run_a_step(char* msg, int msg_len, 
-							int & state, 
-							int conn_fd,
-							char* user_name, 
-							Msg_buffer* & p_msg_buffer,
-							fd_set & wfds) 
+bool go_to_wait_input_user_name_state(const char* msg, const int msg_len, int & state, char* name)
 {
-	switch (state)
+	if (msg_len == 1)
 	{
-	case CONST::NON_LOGIN_REGIST:
-		if (msg_len == 2)
+		if (msg[0] == '0') 
 		{
-			if (msg[0] == '0') 
-			{
-				state = CONST::LOGIN_WAIT_USERNAME;
-				puts("用户名:");
-			}
-			else if (msg[0] == '1')
-			{
-				state = CONST::REGIST_WAIT_USERNAME;
-				puts("用户名:");
-			}
-			else
-			{
-				puts("非法输入");
-				puts("请输入 0:登录 1:注册");
-			}
+			state = CONST::LOGIN_WAIT_USERNAME;
+			return true;
 		}
-		else 
+		else if (msg[0] == '1')
 		{
-			puts("非法输入");
-			puts("请输入 0:登录 1:注册");
-		}
-		break;
-	case CONST::LOGIN_WAIT_USERNAME:
-	case CONST::REGIST_WAIT_USERNAME:
-		if (msg_len > 1 && msg_len <= CONST::USER_NAME_SIZE+1)
-		{
-			memmove(user_name, msg, msg_len);
-			user_name[msg_len-1] = '\0';
-			puts("密码:");
-			if (state == CONST::LOGIN_WAIT_USERNAME)
-				state = CONST::LOGIN_WAIT_USERPSW;
-			else
-				state = CONST::REGIST_WAIT_USERPSW;
+			state = CONST::REGIST_WAIT_USERNAME;
+			return true;
 		}
 		else
-		{
-			puts("用户名不得为空,不得超过30字节(一个汉子符号占3字节,其它符号占1字节)");
-			puts("用户名:");
-		}
-		break;
-	case CONST::LOGIN_WAIT_USERPSW:
-	case CONST::REGIST_WAIT_USERPSW:
-		if (msg_len > 1 && msg_len <= CONST::USER_PSW_SIZE+1)
-		{
-			/* get password */
-			char psw[CONST::USER_PSW_SIZE+1];
-			memmove(psw, msg, msg_len);
-			psw[msg_len-1] = '\0';
-			/* glue user_name and user_password */
-			char msg_data[CONST::MSG_DATA_SIZE];
-			str_glue(user_name, psw, CONST::CHAR_GLUE_NAME_PSW, msg_data);
-			puts("msg_data : ");
-			puts(msg_data);
-			/* packing to message content */
-			char msg_content[CONST::MSG_SIZE];
-			char msg_type[CONST::MSG_TYPE_SIZE];
-			if (state == CONST::LOGIN_WAIT_USERPSW)
-				strcpy(msg_type, CONST::MSG_TYPE_LOGIN);
-			else
-				strcpy(msg_type, CONST::MSG_TYPE_REGIST);
-			Msg_field fields(msg_type, (char*)"", (char*)"", msg_data);
-			int n_msg = Msg_util::packing(&fields, msg_content);
-			printf("message content length=%d\n", n_msg);
-			/* push message content into message buffer */
-			if (p_msg_buffer->push_a_msg(msg_content, n_msg) == 0)
-			{
-				FD_SET(conn_fd, &wfds);	
-				state = CONST::WAIT_SERVER_RET;
-			}
-			else
-				puts("push message failed");
-		}
-		else
-		{
-			puts("密码不得为空,不得超过10位");
-			puts("密码:");
-		}
-		break;
-	case CONST::WAIT_SERVER_RET:
-		break;
-	case CONST::COMMUNICATE:
-		break;
+			return false;
 	}
+	else 
+		return false;
 }
+bool go_to_wait_input_user_psw_state(const char* msg, const int msg_len, int & state, char* name)
+{
+	if (msg_len > 0 && msg_len <= CONST::USER_NAME_SIZE)
+	{
+		memmove(name, msg, msg_len);
+		name[msg_len] = '\0';
+		if (state == CONST::LOGIN_WAIT_USERNAME)
+			state = CONST::LOGIN_WAIT_USERPSW;
+		else
+			state = CONST::REGIST_WAIT_USERPSW;
+		return true;
+	}
+	else
+		return false;
+}
+bool go_to_wait_server_ret_state(const char* msg, const int msg_len, int & state, char* name, char* send_msg, int & send_msg_len)
+{
+	if (msg_len > 0 && msg_len <= CONST::USER_PSW_SIZE)
+	{
+		/* get password */
+		char psw[CONST::USER_PSW_SIZE+1];
+		memmove(psw, msg, msg_len);
+		psw[msg_len] = '\0';
+		
+		/* glue name and password */
+		char msg_data[CONST::MSG_DATA_SIZE];
+		str_glue(name, psw, CONST::CHAR_GLUE_NAME_PSW, msg_data);
+		
+		/* packing to message content */
+		char msg_type[CONST::MSG_TYPE_SIZE];
+		if (state == CONST::LOGIN_WAIT_USERPSW)
+			strcpy(msg_type, CONST::MSG_TYPE_LOGIN);
+		else
+			strcpy(msg_type, CONST::MSG_TYPE_REGIST);
+		Msg_field msg_fields(msg_type, (char*)"", (char*)"", msg_data);
+
+		send_msg_len = Msg_util::packing(&msg_fields, send_msg);
+		
+		/* go to next state */
+		state = CONST::WAIT_SERVER_RET;
+		return true;
+	}
+	else
+		return false;
+}
+bool stay_at_communication_state(const char* msg, const int msg_len, int & state, char* name, char* send_msg, int & send_msg_len)
+{
+	User_input_field input_field;
+	
+	if ( User_input_util::extract(msg, msg_len, &input_field))
+	{
+		Msg_field msg_fields(CONST::MSG_TYPE_MSG, name, input_field.to_name, input_field.data);
+		send_msg_len = Msg_util::packing(&msg_fields, send_msg);
+		return true;
+	}
+	else
+		return false;
+}
+
+/*
+*all state transition function by server inputing follow the standard below:
+*-----four params are basic:-----
+*@param msg, msg_len in
+	message from server inputing
+*@param state in, out
+	the current state of client
+*@param receive_msg_fields out
+	the message fields received from server
+*-----@return-----
+	true if message formation is correct, client succeed to go to next state,
+	false if message formation is wrong, and the state of client unchanged.
+*/
+bool go_to_communication_state(const char* msg, const int msg_len, int & state, Msg_field & receive_msg_fields)
+{
+	if ( Msg_util::unpacking(msg, msg_len, &receive_msg_fields))
+	{
+		if ( strcmp(receive_msg_fields.msg_type, CONST::MSG_TYPE_RET_SUCC) == 0)
+			state = CONST::COMMUNICATE;
+		else
+			state = CONST::QUIT;
+		return true;
+	}
+	else
+		return false;
+}
+bool stay_at_communication_state(const char* msg, const int msg_len, int & state, Msg_field & receive_msg_fields)
+{
+	if ( Msg_util::unpacking(msg, msg_len, &receive_msg_fields))
+		return true;
+	else
+		return false;
+}
+
 
 int main(int argc, char** argv) {
 	
@@ -152,16 +179,16 @@ int main(int argc, char** argv) {
 	}
 
 	/* create socket and message buffer */
-	if ( (conn_fd = create_socket(argv[1], CONST::PORT_NO)) < 0)
-		err_quit("create connection with server failed");
+	if ( (conn_fd = Util::create_socket(argv[1], CONST::PORT_NO)) < 0)
+		Util::err_quit("create connection with server failed");
 
 	p_msg_buffer = new Msg_buffer(conn_fd, 
 								  CONST::MSG_QUEUE_SIZE, 
 								  CONST::MSG_N_BYTE_OF_LENGTH);
 
 	/* make socket unblocking */
-	if ( make_socket_unblocking(conn_fd) < 0)
-		err_quit("make socket unblocking failed");
+	if ( Util::make_socket_unblocking(conn_fd) < 0)
+		Util::err_quit("make socket unblocking failed");
 
 	/* init client state */
 	client_state = CONST::NON_LOGIN_REGIST;
@@ -176,43 +203,134 @@ int main(int argc, char** argv) {
 
 	while (1)
 	{
+
+		if (client_state == CONST::QUIT)
+			break;
+
 		FD_SET(fileno(stdin), &rfds);
 		FD_SET(conn_fd, &rfds);
-
 		maxplus1 = conn_fd + 1;
 
 		if ( (n_ready = select(maxplus1, &rfds, &wfds, NULL, NULL)) < 0)
-			err_quit("select failed");
+			Util::err_quit("select failed");
 
 		if ( FD_ISSET(fileno(stdin), &rfds))
 		{
 			char user_msg[CONST::MSG_SIZE];
-			int n_read = read(fileno(stdin), user_msg, sizeof(user_msg));
-			if (n_read >= 0)
+			int  n_read;
+			if ( (n_read = read(fileno(stdin), user_msg, CONST::MSG_SIZE)) >= 0)
 			{
-				state_machine_run_a_step(user_msg, n_read,
-										 client_state, 
-										 conn_fd,
-										 user_name, 
-										 p_msg_buffer,
-										 wfds);
+				-- n_read; /* remove '\n' from user message */
+				
+				char send_msg[CONST::MSG_SIZE];
+				int  send_msg_len;
+				switch (client_state)
+				{
+				case CONST::NON_LOGIN_REGIST:
+					if ( go_to_wait_input_user_name_state(user_msg, n_read, client_state, user_name))
+						puts("用户名:");
+					else
+						puts("非法输入\n请输入 0.登录 1.注册");
+					break;
+				case CONST::REGIST_WAIT_USERNAME:
+				case CONST::LOGIN_WAIT_USERNAME:
+					if ( go_to_wait_input_user_psw_state(user_msg, n_read, client_state, user_name))
+						puts("密码:");
+					else
+						puts("用户名不得为空,也不得超过30字节(一个汉子占3字节,其它符号占1字节)\n用户名:");
+					break;
+				case CONST::REGIST_WAIT_USERPSW:
+				case CONST::LOGIN_WAIT_USERPSW:
+					if ( go_to_wait_server_ret_state(user_msg, n_read, client_state, user_name, send_msg, send_msg_len))
+					{
+						p_msg_buffer->push_a_msg(send_msg, send_msg_len);
+						FD_SET(conn_fd, &wfds);
+					}
+					else
+						puts("密码不得为空,不得超过10位\n密码:");
+					break;
+				case CONST::COMMUNICATE:
+					if ( stay_at_communication_state(user_msg, n_read, client_state, user_name, send_msg, send_msg_len))
+					{
+						p_msg_buffer->push_a_msg(send_msg, send_msg_len);
+						FD_SET(conn_fd, &wfds);
+					}
+					else
+						puts("输入格式错误");
+					break;
+				default:
+					puts("输入无效");
+				}
 			}
 			else
-				err_quit("stdin error");
+			{
+				puts("stdin error");
+				break;
+			}
 		}
 
 		if ( FD_ISSET(conn_fd, &rfds))
 		{
+			int ret;
+			if ( (ret = p_msg_buffer->read_all()) > 0)
+			{
+				char serv_msg[CONST::MSG_SIZE];
+				int  serv_msg_len;
+				while ( (serv_msg_len = p_msg_buffer->pop_a_msg(serv_msg)) >= 0)
+				{
+					Msg_field serv_msg_fields; 
+					switch (client_state)
+					{
+					case CONST::WAIT_SERVER_RET:
+						if ( go_to_communication_state(serv_msg, serv_msg_len, client_state, serv_msg_fields))
+							puts(serv_msg_fields.msg_data);
+						else
+							puts("来自服务器的消息格式错误");
+						break;
+					case CONST::COMMUNICATE:
+						if ( stay_at_communication_state(serv_msg, serv_msg_len, client_state, serv_msg_fields))
+							if ( strlen(serv_msg_fields.msg_from) > 0)
+								printf("from [%s]: %s\n", serv_msg_fields.msg_from, serv_msg_fields.msg_data);
+							else
+								printf("%s\n", serv_msg_fields.msg_data);
+						else
+							puts("来自服务器的消息格式错误");
+						break;
+					default:
+						puts("异常的服务器数据");
+					}
+				}
+			}
+			else if (ret == 0)
+			{
+				puts("服务器关闭");
+				break;
+			}
+			else
+			{
+				puts("读取socket数据错误");		
+				break;
+			}
 		}
 
 		if ( FD_ISSET(conn_fd, &wfds))
 		{
-			if ( p_msg_buffer->write_all() > 0)
-				puts("全部消息写入socket");
-			FD_CLR(conn_fd, &wfds);
+			int ret;
+			if ( (ret = p_msg_buffer->write_all()) > 0)
+			{
+				FD_CLR(conn_fd, &wfds);
+			}
+			else if (ret < 0)
+			{
+				puts("向socket写入数据出错");
+				break;
+			}
+			else
+				; /* writing socket block */
 		}
 	}
 
 	delete p_msg_buffer;
+	close(conn_fd);
 	return 0;
 }

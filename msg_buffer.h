@@ -78,6 +78,11 @@ public:
 	*/
 	int write_all();
 
+	/*
+	* attribute
+	*/
+	int get_sockfd() {return _sock_fd;}
+
 private:
 
 	int _sock_fd;

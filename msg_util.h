@@ -16,14 +16,13 @@ struct Msg_field
 	/*
 	* all params must use '\0' as the end!!!
 	*/
-	Msg_field(char* type, char* from, char* to, char* data) {
-		strcpy(msg_type, type);
-		strcpy(msg_from, from);
-		strcpy(msg_to, to);
-		strcpy(msg_data, data);
-	}
-
-	Msg_field() {}
+	Msg_field();
+	Msg_field(const char* type, const char* from, const char* to, const char* data);
+	
+	/*
+	* all params must use '\0' as the end!!!
+	*/
+	void set_fields(const char* type, const char* from, const char* to, const char* data);
 };
 
 
@@ -44,23 +43,8 @@ public:
 		> 0 the length of message content,
 		there is no failed case.
 	*/
-	static int packing(Msg_field* p_msg_field, char* msg)
-	{
-		int msg_len = 0;
-		strcpy(msg+msg_len, p_msg_field->msg_type);
-	
-		msg_len += strlen(p_msg_field->msg_type) + 1;
-		strcpy(msg+msg_len, p_msg_field->msg_from);
-	
-		msg_len += strlen(p_msg_field->msg_from) + 1;
-		strcpy(msg+msg_len, p_msg_field->msg_to);
-	
-		msg_len += strlen(p_msg_field->msg_to) + 1;
-		strcpy(msg+msg_len, p_msg_field->msg_data);
-	
-		return msg_len + strlen(p_msg_field->msg_data) + 1;
-	}
-	
+	static int packing(const Msg_field* p_msg_field, char* msg);
+		
 	/*
 	*unpacking [a message content] to [four message fields],
 	*@param msg in
@@ -73,35 +57,19 @@ public:
 		true if the message content format is correct,
 		false if the message content format is wrong.
 	*/
-	static bool unpacking(char* msg, int msg_len, Msg_field* p_msg_field)
-	{
-		/* check whether msg has four fields */
-		int i, c;
-		for (i = 0, c = 0; i < msg_len; ++ i)
-			if (msg[i] == '\0')
-			{
-				++ c;
-				if (c == 4)
-					break;
-			}
-		if (i+1 != msg_len)
-			return false;
-	
-		/* unpacking */
-		i = 0;
-		strcpy(p_msg_field->msg_type, msg+i);
-	
-		i += strlen(msg+i) + 1;
-		strcpy(p_msg_field->msg_from, msg+i);
-	
-		i += strlen(msg+i) + 1;
-		strcpy(p_msg_field->msg_to, msg+i);
-	
-		i += strlen(msg+i) + 1;
-		strcpy(p_msg_field->msg_data, msg+i);
-	
-		return true;
-	}
+	static bool unpacking(const char* msg, const int msg_len, Msg_field* p_msg_field);
 
+	/*
+	*generate message with formation "ERR'\0''\0''\0'err_info'\0'"
+	*@param err_info in
+		error infomation
+	*@param msg out
+		error message
+	*@return
+		> 0 the length of message content,
+		there is no failed case.
+	*/
+	static int err_packing(const char* err_info, char* msg);
+	
 };
 #endif
