@@ -8,6 +8,7 @@
 2. 开启server, 命令 ./server
 
 3. 开启client, 命令 ./client xx.xx.xx.xx
+   
    xx.xx.xx.xx这个参数代表了server端的ip地址
    
 4. 初次使用client端需要按照程序提示进行注册, 如果已注册过, 可以选择登录已有账号
