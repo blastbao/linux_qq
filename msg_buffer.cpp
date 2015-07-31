@@ -15,6 +15,13 @@ Msg_buffer::Msg_buffer(int sock_fd, int queue_size, int n_byte_of_msg_len)
 	_w_len 	= queue_size;
 	_w_head 	= 0;
 	_w_tail 	= 0;
+
+	pthread_mutex_init(& _w_mutex, NULL);
+}
+
+Msg_buffer::~Msg_buffer()
+{
+	pthread_mutex_destroy(& _w_mutex);
 }
 
 int Msg_buffer::read_all()
@@ -24,11 +31,11 @@ int Msg_buffer::read_all()
 
 	while (1)
 	{
-		/*if (_r_tail >= _r_len)
+		if (_r_tail >= _r_len)
 		{
-			_read_queue = realloc(_read_queue, _r_len+_queue_size);
+			_read_queue = (char*) realloc(_read_queue, _r_len+_queue_size);
 			_r_len += _queue_size;
-		}*/
+		}
 
 		if ( (n_read = read(_sock_fd, _read_queue+_r_tail, _r_len-_r_tail)) < 0)
 		{
@@ -78,14 +85,19 @@ int Msg_buffer::pop_a_msg(char* msg_buff)
 
 int Msg_buffer::push_a_msg(char* msg_buff, int msg_len)
 {
-	if (msg_len < 0)
-		return -1;
+	pthread_mutex_lock(& _w_mutex);
 
-	/*if (_w_tail+_n_byte_of_msg_len+msg_len > _w_len)
+	if (msg_len < 0)
+	{
+		pthread_mutex_unlock(& _w_mutex);
+		return -1;
+	}
+
+	if (_w_tail+_n_byte_of_msg_len+msg_len > _w_len)
 	{
 		_write_queue = (char*) realloc(_write_queue, _w_len+_queue_size);
 		_w_len += _queue_size;
-	}*/
+	}
 
 	/* set message length */
 	set_msg_len(msg_len);
@@ -93,11 +105,15 @@ int Msg_buffer::push_a_msg(char* msg_buff, int msg_len)
 	/* copy message to write queue */
 	memmove(_write_queue+_w_tail+_n_byte_of_msg_len, msg_buff, msg_len);
 	_w_tail += _n_byte_of_msg_len + msg_len;
+		
+	pthread_mutex_unlock(& _w_mutex);
 	return 0;
 }
 
 int Msg_buffer::write_all()
 {
+	pthread_mutex_lock(& _w_mutex);
+	
 	int n_write;
 
 	while (_w_tail-_w_head > 0)
@@ -108,10 +124,14 @@ int Msg_buffer::write_all()
 			if (errno == EAGAIN || errno == EWOULDBLOCK)
 			{
 				reset_queue(_write_queue, _w_head, _w_tail);
+				
+				pthread_mutex_unlock(& _w_mutex);
 				return 0;
 			}
 			if (errno == EINTR)
 				continue;
+
+			pthread_mutex_unlock(& _w_mutex);
 			return -1;
 		}
 		else
@@ -122,6 +142,7 @@ int Msg_buffer::write_all()
 
 	_w_head = _w_tail = 0;
 
+	pthread_mutex_unlock(& _w_mutex);
 	return 1;
 }
 

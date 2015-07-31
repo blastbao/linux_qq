@@ -44,6 +44,18 @@ namespace CONST
 	extern char MSG_TYPE_MSG[];
 	extern char MSG_TYPE_RET_SUCC[];
 	extern char MSG_TYPE_RET_FAIL[];
+	extern char MSG_TYPE_FB[];
+	extern char MSG_TYPE_FI[];
+	extern char MSG_TYPE_FE[];
+	extern char MSG_TYPE_FOK[];
+	extern char MSG_TYPE_FNO[];
+
+/* user request type */
+	const  int  USER_REQUEST_TYPE_SIZE = 10;
+	extern char USER_REQUEST_TYPE_MSG[]; /* request sending message */
+	extern char USER_REQUEST_TYPE_FTO[]; /* request sending file */
+	extern char USER_REQUEST_TYPE_FOK[]; /* agree with receiving file */
+	extern char USER_REQUEST_TYPE_FNO[]; /* refuse receiving file */
 
 /* server */
 	/* registed user file */
@@ -51,6 +63,24 @@ namespace CONST
 
 /* epoll */
 	const int MAX_EVENTS = 1024;
+
+/* file transfer */
+	/* file transfer attribute */
+	const int MAX_DIR_LEN       = 256;
+	const int MAX_FILE_NUM      = 3000;
+	const int FILE_TYPE_SIZE       = 10;
+	const int FILE_DATA_BLOCK_SIZE = MSG_DATA_SIZE - FILE_TYPE_SIZE;
+	/* file type */
+	extern char FILE_TYPE_DIR[]; /* file that will be transfered is a dir */
+	extern char FILE_TYPE_FB[];  /* the begining of transfer for a file */
+	extern char FILE_TYPE_FI[];  /* transfering a file */
+	extern char FILE_TYPE_FE[];  /* the end of transfer for a file */
+	/* receiving dir */
+	extern char RECEIVE_DIR[]; 
+
+/* ring queue */
+	const int RING_QUEUE_SIZE = 1024;
+	
 };
 
 #endif

@@ -5,7 +5,7 @@ int Service::regist(const int request_sockfd, const Msg_field & request_fields, 
 	/* split to get user name and password */
 	char ch_name[CONST::USER_NAME_SIZE];
 	char ch_psw[CONST::USER_PSW_SIZE];
-	str_split(request_fields.msg_data, CONST::CHAR_GLUE_NAME_PSW, ch_name, ch_psw);
+	Util::str_split(request_fields.msg_data, CONST::CHAR_GLUE_NAME_PSW, ch_name, ch_psw);
 
 	string name(ch_name);
 	string psw(ch_psw);
@@ -45,7 +45,7 @@ int Service::login(const int request_sockfd, const Msg_field & request_fields, i
 	/* split to get user name and password */
 	char ch_name[CONST::USER_NAME_SIZE];
 	char ch_psw[CONST::USER_PSW_SIZE];
-	str_split(request_fields.msg_data, CONST::CHAR_GLUE_NAME_PSW, ch_name, ch_psw);
+	Util::str_split(request_fields.msg_data, CONST::CHAR_GLUE_NAME_PSW, ch_name, ch_psw);
 
 	string name(ch_name);
 	string psw(ch_psw);
@@ -103,18 +103,7 @@ void Service::transponder(const int request_sockfd, const Msg_field & request_fi
 * private
 */
 
-void Service::str_split(const char* old_str, const char delimiter, char* s1, char* s2)
-{
-	int i;
-	for (i = 0; old_str[i] != delimiter; ++ i)
-		s1[i] = old_str[i];
-	s1[i++] = '\0';
 
-	int j = 0;
-	for (; old_str[i] != '\0'; ++ i)
-		s2[j++] = old_str[i];
-	s2[j] = '\0';
-}
 
 int Service::save_registed_user(char* fname, const string & name, const string & psw)
 {

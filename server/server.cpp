@@ -90,15 +90,6 @@ void close_sock(int sock_fd, map<int, Msg_buffer*> & map_sock_msgbuff, DB & db)
 	db.map_login_sock_name.erase(sock_fd);
 }
 
-void show_msg(char* msg, int msg_len)
-{
-	printf("message content :\n");
-	printf("message len = %d\n", msg_len);
-	for (int i = 0; i < msg_len; ++ i)
-		printf("%c", msg[i]);
-	printf("\n");
-}
-
 /*
 *do service for the request message
 *@param request_sockfd in
@@ -140,7 +131,12 @@ int do_service(const int request_sockfd, const char* request_msg, const int requ
 			else
 				puts("登录失败!");
 		}
-		else if ( strcmp(request_fields.msg_type, CONST::MSG_TYPE_MSG) == 0)
+		else if ( strcmp(request_fields.msg_type, CONST::MSG_TYPE_MSG) == 0 ||
+				  strcmp(request_fields.msg_type, CONST::MSG_TYPE_FB) == 0  ||
+				  strcmp(request_fields.msg_type, CONST::MSG_TYPE_FI) == 0 ||
+				  strcmp(request_fields.msg_type, CONST::MSG_TYPE_FE) == 0 ||
+				  strcmp(request_fields.msg_type, CONST::MSG_TYPE_FOK) == 0 ||
+				  strcmp(request_fields.msg_type, CONST::MSG_TYPE_FNO) == 0 )
 		{ 
 			/* client request transponder message service */
 			Service::transponder(request_sockfd, request_fields, echo_sockfd, echo_fields, db);
@@ -223,7 +219,7 @@ void wait_event(int epoll_fd, int listen_fd)
 							int  echo_sockfd;
 							if ( (echo_sockfd = do_service(request_sockfd, request_msg, request_msg_len, echo_msg, echo_msg_len, db)) < 0)
 							{
-								echo_msg_len = Msg_util::err_packing(echo_msg, (char*) "xiao xi ge shi cuo wu!");
+								echo_msg_len = Msg_util::err_packing(echo_msg, (char*) "消息格式错误");
 								echo_sockfd = request_sockfd;
 							}
 
@@ -246,7 +242,7 @@ void wait_event(int epoll_fd, int listen_fd)
 				{
 					Msg_buffer* p_msg_buffer;
 					p_msg_buffer = map_sock_msgbuff[request_sockfd];
-					
+
 					int ret;
 					if ( (ret = p_msg_buffer->write_all()) > 0)
 						Util::update_event(epoll_fd, request_sockfd, EPOLLIN);

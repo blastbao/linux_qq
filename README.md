@@ -1,17 +1,17 @@
 # linux_qq
-运行于linux上命令行即时通讯程序
+运行于linux上的命令行即时通讯程序
 
 /*----------- 快速运行 -----------*/
 
-1. 分别编译server和client, 编译命令均为make
+1. 分别编译server和client, 编译命令为make
 
-2. 开启server, 命令 ./server
+2. 先开启server, 命令 ./server
 
-3. 开启client, 命令 ./client xx.xx.xx.xx
+3. 再开启client, 命令 ./client xx.xx.xx.xx
    
-   xx.xx.xx.xx这个参数代表了server端的ip地址
+   xx.xx.xx.xx这个代表server的ip地址
    
-4. 初次使用client端需要按照程序提示进行注册, 如果已注册过, 可以选择登录已有账号
+4. 初次使用需要按照程序提示进行注册, 如果已注册过, 可以选择登录已有账号
 
 5. 注册或登录成功后, 可以给同样处于登录状态的用户发送消息, 也可接受其它用户的消息
    假设有两个已登录用户, 用户名分别为: zfz 和 yx

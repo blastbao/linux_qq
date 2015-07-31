@@ -57,6 +57,26 @@ int Util::update_event(int epoll_fd, int sock_fd, uint32_t events)
 	return 0;
 }
 
+void Util::str_glue(const char* s1, const char* s2, const char delimiter, char* new_str)
+{
+	strcpy(new_str, s1);
+	strcpy(new_str+strlen(new_str)+1, s2);
+	new_str[strlen(s1)] = delimiter;
+}
+
+void Util::str_split(const char* old_str, const char delimiter, char* s1, char* s2)
+{
+	int i;
+	for (i = 0; old_str[i] != delimiter; ++ i)
+		s1[i] = old_str[i];
+	s1[i++] = '\0';
+
+	int j = 0;
+	for (; old_str[i] != '\0'; ++ i)
+		s2[j++] = old_str[i];
+	s2[j] = '\0';
+}
+
 void Util::err_quit(const char* msg) {
 	printf("%s, error code = %d\n", msg, errno);
 	_exit(1);

@@ -4,6 +4,7 @@
 *3.使用此类可以带来的帮助:
 	3.1 简化从socket中读取消息的工作.
 	3.2 简化向socket中写入消息,并且在socket发送缓冲已满的情况下不会造成消息丢失.
+	3.3 push_a_msg()和write_all()接口加入了互斥锁,写入socket操作是线程安全的
 *4.需要注意:
 	4.1 read_all()函数可能会从socket中读出多个消息,为避免其中部分消息处于饥饿状态,
 		需要重复调用pop_a_msg()函数,确保所有消息都可以及时得到处理.
@@ -19,6 +20,7 @@
 #include	<string.h>
 
 #include	<unistd.h>
+#include	<pthread.h>
 #include	<errno.h>
 
 class Msg_buffer
@@ -36,6 +38,7 @@ public:
 		the byte number of message length field, th value have to be in (0, 4]
 	*/
 	Msg_buffer(int sock_fd, int queue_size, int n_byte_of_msg_len);
+	~Msg_buffer();
 
 	/*
 	*read all bytes from its socket
@@ -96,6 +99,7 @@ private:
 	int _w_len;
 	int _w_head;
 	int _w_tail;
+	pthread_mutex_t _w_mutex;
 
 	int _queue_size;
 

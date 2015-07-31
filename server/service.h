@@ -5,6 +5,7 @@
 *This file contains service interface for the message of client requesting
 */
 
+#include	"../util.h"
 #include	"../const.h"
 #include	"../msg_util.h"
 
@@ -54,20 +55,7 @@ public:
 
 private:
 	
-	/*
-	*split old_str into s1 and s2
-	*@param old_str in
-		it must be end with '\0', and must contain one delimiter character
-	*@param delimiter in
-		used to spliting
-	*@param s1 out
-		it will be end with '\0', it must have enough space
-	*@param s2 out
-		it will be end with '\0', it must have enough space
-	*@assume
-		this function always success
-	*/
-	static void str_split(const char* old_str, const char delimiter, char* s1, char* s2);
+	
 
 	/* 
 	*save one user to registed file 
