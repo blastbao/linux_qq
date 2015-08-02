@@ -8,6 +8,7 @@
 #include	"./fsocket.h"
 
 #include	<sys/select.h>
+#include	<sys/time.h>
 #include	<pthread.h>
 
 /*
@@ -164,6 +165,8 @@ void *sending_files(void* argv)
 	Msg_field msg_fields;
 	char msg[CONST::MSG_SIZE];
 	int  msg_len;
+
+	printf("开始发送文件\n");
 	
 	char data[CONST::MSG_DATA_SIZE+1];
 	while ( (ret = fsock_s.fsock_read(data)) > 0)	
@@ -182,11 +185,11 @@ void *sending_files(void* argv)
 
 		p_msg_buffer->push_a_msg(msg, msg_len);
 		if ( p_msg_buffer->write_all() == 0)
-			puts("socket写缓冲已满，还需要把剩下的消息全部写入socket");
+			printf("socket写缓冲已满，还需要把剩下的消息全部写入socket\n");
 	}
 
 	else
-		puts("read file error !!!!");
+		printf("read file error !!!!\n");
 
 	while( p_msg_buffer->write_all() == 0);
 	
@@ -198,24 +201,33 @@ void *receiving_files(void* argv)
 {
 	int  ret;
 	char data[CONST::MSG_DATA_SIZE+1];
+	
+	printf("开始接收文件\n");
 
+	timeval start, end;
+	gettimeofday(& start, NULL);
+
+	bool is_succ = true;
+	
 	while (1)
 	{
 		p_ring_queue->pop(data);
 
 		if ( (ret = fsock_r.fsock_write(data)) < 0)
-		{
-			puts("write file error !!!!");
-			break;
-		}
+			is_succ = false;
 		if (ret == 0)
-		{
-			puts("文件接收成功");
 			break;
-		}
 	}
 
 	fsock_r.fsock_close();
+
+	gettimeofday(& end, NULL);
+	double timeuse = 1000000 * ( end.tv_sec - start.tv_sec ) + end.tv_usec - start.tv_usec;
+	if (is_succ)
+		printf("接收文件成功\n");
+	else
+		printf("接收文件失败，请通知对方从新发送\n");
+	printf("\r接收文件耗时:%lf s\n", timeuse/1000000);
 }
 
 void run_sending_thread()
@@ -415,6 +427,7 @@ int main(int argc, char** argv) {
 							else if ( strcmp(serv_msg_fields.msg_type, CONST::MSG_TYPE_FB) == 0)
 							{
 								fsock_r.fsock_accept(serv_msg_fields.msg_from, serv_msg_fields.msg_data);
+								printf("[%s] 向你发送了文件 [%s]\n", serv_msg_fields.msg_from, serv_msg_fields.msg_data);
 							}
 							else if ( strcmp(serv_msg_fields.msg_type, CONST::MSG_TYPE_FOK) == 0)
 							{

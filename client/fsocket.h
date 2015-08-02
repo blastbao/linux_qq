@@ -129,8 +129,8 @@ public:
 		it contains two parts,
 		please look at fsock_read() function to probe two parts
 	*@return 
-		1 if success
-		0 if file transfering finish
+		1  if success
+		0  if file transfering finish
 		-1 if system error occur
 	*/
 	int fsock_write(const char* buff);

@@ -21,12 +21,6 @@ bool Fsocket_s::fsock_connect(const char* user_name_r, const char* path)
 
 	_is_trans = false;
 
-	printf("user name: %s\n", _user_name_r);
-	printf("dir : %s\n", _dir);
-	printf("file # : %d\n", _n_file);
-	for (int i = 0; i < _n_file; ++ i)
-		printf("%s\n", _files[i]);
-
 	return true;
 }
 
@@ -102,10 +96,6 @@ void Fsocket_r::fsock_accept(const char* user_name_s, const char* file)
 	strcpy(_file, file);
 	_fd = -1;
 	_is_trans = false;
-
-	printf("from:%s\n", _user_name_s);
-	printf("dir:%s\n", _dir);
-	printf("file:%s\n", _file);
 }
 
 int Fsocket_r::fsock_write(const char* buff)
