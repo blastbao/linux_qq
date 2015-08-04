@@ -28,12 +28,12 @@ namespace CONST
 
 /* message */
 	/* message content size */
-	const int MSG_SIZE = 1024;
+	const int MSG_SIZE = 1024*2;
 	/* message field size */
 	const int MSG_TYPE_SIZE = 10;
 	const int MSG_FROM_SIZE = USER_NAME_SIZE;
 	const int MSG_TO_SIZE   = USER_NAME_SIZE;
-	const int MSG_DATA_SIZE = 950;
+	const int MSG_DATA_SIZE = MSG_SIZE - (MSG_TYPE_SIZE + 2*USER_NAME_SIZE) - 4;
 	/* message length size */
 	const int MSG_N_BYTE_OF_LENGTH = 2;
 	/* message buffer queue size */
@@ -79,7 +79,7 @@ namespace CONST
 	extern char RECEIVE_DIR[]; 
 
 /* ring queue */
-	const int RING_QUEUE_SIZE = 1024;
+	const int RING_QUEUE_SIZE = 10240;
 	
 };
 

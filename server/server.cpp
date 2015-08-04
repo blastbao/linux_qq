@@ -212,6 +212,8 @@ void wait_event(int epoll_fd, int listen_fd)
 					{
 						char request_msg[CONST::MSG_SIZE];
 						int  request_msg_len;
+
+						int  tmp = 0;
 						while ( (request_msg_len = map_sock_msgbuff[request_sockfd]->pop_a_msg(request_msg)) > 0)
 						{	
 							char echo_msg[CONST::MSG_SIZE];
@@ -225,6 +227,7 @@ void wait_event(int epoll_fd, int listen_fd)
 
 							if ( map_sock_msgbuff[echo_sockfd]->push_a_msg(echo_msg, echo_msg_len) == 0)
 								Util::update_event(epoll_fd, echo_sockfd, EPOLLOUT);
+							++ tmp;
 						}
 					}
 					else if (ret == 0)

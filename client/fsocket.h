@@ -15,8 +15,6 @@
 
 #include	<string.h>
 
-#include	<stdio.h>
-
 /*
 *A File Socket is determined by 
 * <user name of other side, file name that transfered> pair

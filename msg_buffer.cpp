@@ -33,8 +33,8 @@ int Msg_buffer::read_all()
 	{
 		if (_r_tail >= _r_len)
 		{
-			_read_queue = (char*) realloc(_read_queue, _r_len+_queue_size);
-			_r_len += _queue_size;
+			_read_queue = (char*) realloc(_read_queue, _r_len*2);
+			_r_len *= 2;
 		}
 
 		if ( (n_read = read(_sock_fd, _read_queue+_r_tail, _r_len-_r_tail)) < 0)
@@ -95,8 +95,8 @@ int Msg_buffer::push_a_msg(char* msg_buff, int msg_len)
 
 	if (_w_tail+_n_byte_of_msg_len+msg_len > _w_len)
 	{
-		_write_queue = (char*) realloc(_write_queue, _w_len+_queue_size);
-		_w_len += _queue_size;
+		_write_queue = (char*) realloc(_write_queue, _w_len*2);
+		_w_len *= 2;
 	}
 
 	/* set message length */

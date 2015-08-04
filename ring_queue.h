@@ -7,7 +7,6 @@
 */
 
 #include	<pthread.h>
-
 #include	<string.h>
 
 class Ring_queue
