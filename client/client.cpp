@@ -11,6 +11,11 @@
 #include	<sys/time.h>
 #include	<pthread.h>
 
+#include	<map>
+#include	<string>
+#include	<iostream>
+using namespace std;
+
 /*
 *[Client] is a [state machine],
 *[the state of client] and [the data received from user or server] determine 
@@ -22,13 +27,60 @@
 int conn_fd; 				/* socket with server */
 Msg_buffer* p_msg_buffer;	/* message buffer with conn_fd socket */
 
-char user_name[CONST::USER_NAME_SIZE+1];
+char user_name[CONST::USER_NAME_SIZE+1];	/* user name of client */
+map<string, bool> map_friendlist;			/* <friend_name, true> represents friend is online */
+
+map<string, bool> map_friend_req;			/* request adding friend table */
 
 Fsocket_s 	fsock_s;		/* sending socket for file transfering */
 Fsocket_r	fsock_r;		/* receiving socket for file transfering */
 Ring_queue*	p_ring_queue;	/* ring queue for receiving file thread */
 /*====================*/
 
+/*
+*@param friendlist in
+	"friend1friend1friend2friend1'\0'"
+	'1' represents this friend is online,
+	'2' represents this friend is offline.
+*@return 
+	true  if success
+	false if the formation of friendlist param is wrong, and map_friendlist is empty
+*/
+bool get_friendlist(const char* friendlist, map<string, bool> & map_friendlist)
+{
+	string friend_name;
+	for (int i = 0; friendlist[i] != '\0'; ++ i)
+	{
+		if (friendlist[i] == 1)
+		{
+			map_friendlist[friend_name] = true;
+			friend_name.clear();
+		}
+		else if (friendlist[i] == 2)
+		{
+			map_friendlist[friend_name] = false;
+			friend_name.clear();
+		}
+		else
+			friend_name.push_back(friendlist[i]);
+	}
+
+	if (friend_name.length() > 0)
+	{
+		map_friendlist.clear();
+		return false;
+	}
+	return true;
+}
+
+void display_friendlist(const map<string, bool> & map_friendlist)
+{
+	for (map<string, bool>::const_iterator iter=map_friendlist.begin(); iter!=map_friendlist.end(); ++ iter)
+		if (iter->second)
+			cout << iter->first << "\t" << "在线\n";
+		else
+			cout << iter->first << "\t" << "不在线\n";
+}
 
 /*
 *all state transition function by user inputing follow the standard below:
@@ -304,16 +356,16 @@ int main(int argc, char** argv) {
 				{
 				case CONST::NON_LOGIN_REGIST:
 					if ( go_to_wait_input_user_name_state(user_msg, n_read, client_state, user_name))
-						puts("用户名:");
+						printf("用户名:");
 					else
-						puts("非法输入\n请输入 0.登录 1.注册");
+						printf("非法输入\n请输入 0.登录 1.注册");
 					break;
 				case CONST::REGIST_WAIT_USERNAME:
 				case CONST::LOGIN_WAIT_USERNAME:
 					if ( go_to_wait_input_user_psw_state(user_msg, n_read, client_state, user_name))
-						puts("密码:");
+						printf("密码:");
 					else
-						puts("用户名不得为空,也不得超过30字节(一个汉子占3字节,其它符号占1字节)\n用户名:");
+						printf("用户名不得为空,也不得超过30字节(一个汉子占3字节,其它符号占1字节)\n用户名:");
 					break;
 				case CONST::REGIST_WAIT_USERPSW:
 				case CONST::LOGIN_WAIT_USERPSW:
@@ -324,15 +376,22 @@ int main(int argc, char** argv) {
 						FD_SET(conn_fd, &wfds);
 					}
 					else
-						puts("密码不得为空,不得超过10位\n密码:");
+						printf("密码不得为空,不得超过10位\n密码:");
 					break;
 				case CONST::COMMUNICATE:
 					/*
-					* there are two types of communication
-					* first type is sending message,
-					* second type is sending file 
+					* there are three types of communication
+					* 1th type is displaying friend list,
+					* 2th type is sending message,
+					* 3th type is sending file 
 					*/
-					if ( User_input_util::extract(user_msg, n_read, input_fields))
+					user_msg[n_read] = '\0';
+					if ( strcmp(user_msg, CONST::USER_REQUEST_TYPE_FRIENDLIST) == 0)
+					{
+						/* display friend list */
+						display_friendlist(map_friendlist);
+					}
+					else if ( User_input_util::extract(user_msg, n_read, input_fields))
 					{
 						if ( strcmp(input_fields.request_type, CONST::USER_REQUEST_TYPE_MSG) == 0)
 						{
@@ -384,6 +443,51 @@ int main(int argc, char** argv) {
 							else
 								puts("您正在接受其它用户发送的文件，暂不支持同时接受多个文件");
 						}
+						else if ( strcmp(input_fields.request_type, CONST::USER_REQUEST_TYPE_ADDFRIEND) == 0)
+						{
+							/* User would like to add friend */
+							string to_name(input_fields.to_name);
+
+							if ( strcmp(input_fields.to_name, user_name) != 0)
+								if (map_friendlist.count(to_name) == 0)
+									sending_msg(CONST::MSG_TYPE_ADDFRIEND, user_name, input_fields.to_name, (char*)"", 
+												p_msg_buffer, conn_fd, wfds);
+								else
+									puts("你们已经是好基友了，不要重复好友请求啦～～");
+							else
+								puts("不能与自己结为好友！");
+						}
+						else if ( strcmp(input_fields.request_type, CONST::USER_REQUEST_TYPE_ADDOK) == 0)
+						{
+							/* user agree with one adding friend request */
+							string to_name(input_fields.to_name);
+
+							if ( map_friend_req.count(to_name) > 0)
+							{
+								sending_msg(CONST::MSG_TYPE_ADDOK, user_name, input_fields.to_name, (char*)"", 
+											p_msg_buffer, conn_fd, wfds);
+								map_friendlist[to_name] = true;
+								map_friend_req.erase(to_name);
+								printf("你和[%s]已经是好基友了，快和他打个招呼吧~\n", to_name.c_str());
+							}
+							else
+								puts("对方并没有发送添加好友请求！");
+						}
+						else if ( strcmp(input_fields.request_type, CONST::USER_REQUEST_TYPE_ADDNO) == 0)
+						{
+							/* user refuse one adding friend request */
+							string to_name(input_fields.to_name);
+
+							if ( map_friend_req.count(to_name) > 0)
+							{
+								sending_msg(CONST::MSG_TYPE_ADDNO, user_name, input_fields.to_name, (char*)"", 
+											p_msg_buffer, conn_fd, wfds);
+								map_friend_req.erase(to_name);
+								printf("你无情的拒绝了[%s]的好友请求，你真的这么无情吗~\n", to_name.c_str());
+							}
+							else
+								puts("对方并没有发送添加好友请求！");
+						}
 					}
 					else
 						puts("输入格式错误");
@@ -391,10 +495,11 @@ int main(int argc, char** argv) {
 				default:
 					puts("输入无效");
 				}
+				printf("\n");
 			}
 			else
 			{
-				puts("stdin error");
+				puts("stdin error\n");
 				break;
 			}
 		}
@@ -411,50 +516,91 @@ int main(int argc, char** argv) {
 					Msg_field serv_msg_fields; 
 					switch (client_state)
 					{
-					case CONST::WAIT_SERVER_RET:
+					case CONST::WAIT_SERVER_RET:	/* wait for login or regist result */
 						if ( go_to_communication_state(serv_msg, serv_msg_len, client_state, serv_msg_fields))
-							puts(serv_msg_fields.msg_data);
+							printf("%s\n\n", serv_msg_fields.msg_data);
 						else
-							puts("来自服务器的消息格式错误");
+							puts("来自服务器的消息格式错误\n");
+						if ( client_state == CONST::COMMUNICATE)
+						{
+							sending_msg(CONST::MSG_TYPE_FRIENDLIST, user_name, (char*)"", (char*)"",
+									p_msg_buffer, conn_fd, wfds);
+						}
 						break;
-					case CONST::COMMUNICATE:
+					case CONST::COMMUNICATE:		/* login is success */
 						if ( receiving_msg(serv_msg, serv_msg_len, serv_msg_fields))
 						{
-							if ( strcmp(serv_msg_fields.msg_type, CONST::MSG_TYPE_MSG) == 0)
+							if ( strcmp(serv_msg_fields.msg_type, CONST::MSG_TYPE_MSG) == 0)				/* message from other user */
 							{
-								printf("from [%s]: %s\n", serv_msg_fields.msg_from, serv_msg_fields.msg_data);
+								printf("from [%s]: %s\n\n", serv_msg_fields.msg_from, serv_msg_fields.msg_data);
 							}
-							else if ( strcmp(serv_msg_fields.msg_type, CONST::MSG_TYPE_FB) == 0)
+							else if ( strcmp(serv_msg_fields.msg_type, CONST::MSG_TYPE_FRIENDLIST) == 0)	/* friend list from server */
+							{
+								if ( !get_friendlist(serv_msg_fields.msg_data, map_friendlist))
+								{
+									puts("服务器返回的好友列表格式错误\n");
+									client_state = CONST::QUIT;
+								}
+							}
+							else if ( strcmp(serv_msg_fields.msg_type, CONST::MSG_TYPE_NOTI_LOGIN) == 0 ||
+									  strcmp(serv_msg_fields.msg_type, CONST::MSG_TYPE_NOTI_LOGOUT) == 0)	/* friend login or logout notification */
+							{
+								printf("%s\n\n", serv_msg_fields.msg_data);
+								string friend_name(serv_msg_fields.msg_from);
+								map_friendlist[friend_name] ^= 1;
+							}
+							else if ( strcmp(serv_msg_fields.msg_type, CONST::MSG_TYPE_FB) == 0)			/* file transmitting request from other user */
 							{
 								fsock_r.fsock_accept(serv_msg_fields.msg_from, serv_msg_fields.msg_data);
-								printf("[%s] 向你发送了文件 [%s]\n", serv_msg_fields.msg_from, serv_msg_fields.msg_data);
+								printf("[%s] 向你发送了文件 [%s]\n\n", serv_msg_fields.msg_from, serv_msg_fields.msg_data);
 							}
-							else if ( strcmp(serv_msg_fields.msg_type, CONST::MSG_TYPE_FOK) == 0)
+							else if ( strcmp(serv_msg_fields.msg_type, CONST::MSG_TYPE_FOK) == 0)			/* agree with file transmitting request */
 							{
 								fsock_s.set_trans(); /* start transfering state */
 								run_sending_thread(); /* start thread to send files */
 							}
-							else if ( strcmp(serv_msg_fields.msg_type, CONST::MSG_TYPE_FNO) == 0)
+							else if ( strcmp(serv_msg_fields.msg_type, CONST::MSG_TYPE_FNO) == 0)			/* reject file transmitting request */
 							{
 								fsock_s.fsock_close();
-								printf("[%s] 拒绝了你的发送文件请求\n", serv_msg_fields.msg_from);
+								printf("[%s] 拒绝了你的发送文件请求\n\n", serv_msg_fields.msg_from);
 							}
-							else if ( strcmp(serv_msg_fields.msg_type, CONST::MSG_TYPE_FI) == 0)
+							else if ( strcmp(serv_msg_fields.msg_type, CONST::MSG_TYPE_FI) == 0)			/* file transmitting on going */
 							{
 								p_ring_queue->put(serv_msg_fields.msg_data); /* put data into ring queue */
 							}
-							else if ( strcmp(serv_msg_fields.msg_type, CONST::MSG_TYPE_FE) == 0)
+							else if ( strcmp(serv_msg_fields.msg_type, CONST::MSG_TYPE_FE) == 0)			/* file transmitting finished */
 							{
 								p_ring_queue->put(CONST::MSG_TYPE_FE); /* put the eof of the file transfering into ring queue */
 							}
+							else if ( strcmp(serv_msg_fields.msg_type, CONST::MSG_TYPE_ADDFRIEND) == 0)		/* other user requests adding friend */
+							{
+								string from_name(serv_msg_fields.msg_from);
+								map_friend_req[from_name] = true;
+								printf("[%s]向你发除了添加好友请求\n\n", from_name.c_str());	
+							}
+							else if ( strcmp(serv_msg_fields.msg_type, CONST::MSG_TYPE_ADDOK) == 0)			/* other user agrees with your adding friend request */
+							{
+								string from_name(serv_msg_fields.msg_from);
+								map_friendlist[from_name] = true;
+								if (map_friend_req.count(from_name) > 0)
+									map_friend_req.erase(from_name);
+								printf("[%s]同意了你的好友请求，现在你们是好基友了，快和他打个招呼吧~\n\n", serv_msg_fields.msg_from);			
+							}
+							else if ( strcmp(serv_msg_fields.msg_type, CONST::MSG_TYPE_ADDNO) == 0)			/* other user refuses your adding friend request */
+							{
+								string from_name(serv_msg_fields.msg_from);
+								if (map_friend_req.count(from_name) > 0)
+									map_friend_req.erase(from_name);
+								printf("[%s]拒绝了你的好友请求，悲哀的孩纸~\n\n", serv_msg_fields.msg_from);	
+							}
 							else
-								printf("%s\n", serv_msg_fields.msg_data);
+								printf("%s\n\n", serv_msg_fields.msg_data);
 						}
 						else
-							puts("来自服务器的消息格式错误");
+							puts("来自服务器的消息格式错误\n");
 						break;
 					default:
-						puts("异常的服务器数据");
+						puts("异常的服务器数据\n");
 					}
 				}
 			}

@@ -30,7 +30,7 @@ namespace CONST
 	/* message content size */
 	const int MSG_SIZE = 1024*2;
 	/* message field size */
-	const int MSG_TYPE_SIZE = 10;
+	const int MSG_TYPE_SIZE = 20;
 	const int MSG_FROM_SIZE = USER_NAME_SIZE;
 	const int MSG_TO_SIZE   = USER_NAME_SIZE;
 	const int MSG_DATA_SIZE = MSG_SIZE - (MSG_TYPE_SIZE + 2*USER_NAME_SIZE) - 4;
@@ -41,14 +41,21 @@ namespace CONST
 	/* message types */
 	extern char MSG_TYPE_REGIST[];
 	extern char MSG_TYPE_LOGIN[];
+	extern char MSG_TYPE_LOGOUT[];
 	extern char MSG_TYPE_MSG[];
 	extern char MSG_TYPE_RET_SUCC[];
 	extern char MSG_TYPE_RET_FAIL[];
+	extern char MSG_TYPE_NOTI_LOGIN[];	/* broadcast message type */
+	extern char MSG_TYPE_NOTI_LOGOUT[];	/* broadcast message type */
 	extern char MSG_TYPE_FB[];
 	extern char MSG_TYPE_FI[];
 	extern char MSG_TYPE_FE[];
 	extern char MSG_TYPE_FOK[];
 	extern char MSG_TYPE_FNO[];
+	extern char MSG_TYPE_FRIENDLIST[];
+	extern char MSG_TYPE_ADDFRIEND[];
+	extern char MSG_TYPE_ADDOK[];
+	extern char MSG_TYPE_ADDNO[];
 
 /* user request type */
 	const  int  USER_REQUEST_TYPE_SIZE = 10;
@@ -56,10 +63,15 @@ namespace CONST
 	extern char USER_REQUEST_TYPE_FTO[]; /* request sending file */
 	extern char USER_REQUEST_TYPE_FOK[]; /* agree with receiving file */
 	extern char USER_REQUEST_TYPE_FNO[]; /* refuse receiving file */
+	extern char USER_REQUEST_TYPE_FRIENDLIST[]; /* request display friend list */
+	extern char USER_REQUEST_TYPE_ADDFRIEND[];  /* request add friend */
+	extern char USER_REQUEST_TYPE_ADDOK[];		/* agree with adding friend */
+	extern char USER_REQUEST_TYPE_ADDNO[];		/* refuse adding friend */
 
 /* server */
 	/* registed user file */
 	extern char REGISTED_FILE[];
+	extern char FRIENDSHIP_FILE[];
 
 /* epoll */
 	const int MAX_EVENTS = 1024;

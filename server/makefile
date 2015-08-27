@@ -1,10 +1,13 @@
-obj=server.o service.o const.o util.o msg_buffer.o msg_util.o
+obj=server.o db.o service.o const.o util.o msg_buffer.o msg_util.o
 
 server:$(obj)
 	g++ -o server $(obj)
 
 server.o:server.cpp
 	g++ -c server.cpp
+
+db.o:db.cpp
+	g++ -c db.cpp
 
 service.o:service.cpp
 	g++ -c service.cpp

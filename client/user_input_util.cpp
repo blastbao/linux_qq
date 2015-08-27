@@ -18,19 +18,21 @@ bool User_input_util::extract(const char* user_input, const int input_len, User_
 				tmp_buff[tmp_len++] = user_input[i]; 
 				state = 4; 
 			}
-			else if (state == 2 || state == 3)
+			else if (state == 2 || state == 3 || state == 14)
 				tmp_buff[tmp_len++] = user_input[i];
 			else 
 				return false;
 			break;
 		case 'o':
-			if (state == 4 || state == 5 || state == 7) 
+			if (state == 4 || state == 5 || state == 7 || state == 10 || state == 12) 
 			{ 
 				tmp_buff[tmp_len++] = user_input[i]; 
 				if (state == 4 || state == 7) state = 1; 
-				else state = 6; 
+				else if (state == 5)  state = 6; 
+				else if (state == 10) state = 11;
+				else if (state == 12) state = 13;
 			}
-			else if (state == 2 || state == 3)
+			else if (state == 2 || state == 3 || state == 14)
 				tmp_buff[tmp_len++] = user_input[i];
 			else
 				return false;
@@ -41,29 +43,53 @@ bool User_input_util::extract(const char* user_input, const int input_len, User_
 				tmp_buff[tmp_len++] = user_input[i];
 				state = 5;
 			}
-			else if (state == 2 || state == 3)
+			else if (state == 2 || state == 3 || state == 14)
 				tmp_buff[tmp_len++] = user_input[i];
 			else
 				return false;	
 			break;
 		case 'k':
-			if (state == 6) 
+			if (state == 6 || state == 11) 
 			{
 				tmp_buff[tmp_len++] = user_input[i];
-				state = 1;
+				if (state == 6) 	  state = 1;
+				else if (state == 11) state = 13;
 			}
-			else if (state == 2 || state == 3)
+			else if (state == 2 || state == 3 || state == 14)
 				tmp_buff[tmp_len++] = user_input[i];
 			else
 				return false;
 			break;
 		case 'n':
-			if (state == 5) 
+			if (state == 5 || state == 10) 
 			{
 				tmp_buff[tmp_len++] = user_input[i];
-				state = 7;
+				if (state == 5)		  state = 7;
+				else if (state == 10) state = 12;
 			}
-			else if (state == 2 || state == 3)
+			else if (state == 2 || state == 3 || state == 14)
+				tmp_buff[tmp_len++] = user_input[i];
+			else
+				return false;
+			break;
+		case 'a':
+			if (state == 0)
+			{
+				tmp_buff[tmp_len++] = user_input[i];
+				state = 8;
+			}
+			else if (state == 2 || state == 3 || state == 14)
+				tmp_buff[tmp_len++] = user_input[i];
+			else
+				return false;
+			break;
+		case 'd':
+			if (state == 8 || state == 9)
+			{
+				tmp_buff[tmp_len++] = user_input[i];
+				++ state;
+			}
+			else if (state == 2 || state == 3 || state == 14)
 				tmp_buff[tmp_len++] = user_input[i];
 			else
 				return false;
@@ -81,13 +107,19 @@ bool User_input_util::extract(const char* user_input, const int input_len, User_
 				tmp_len = 0;
 				state = 3;
 			}
-			else if (state == 3)
+			else if (state == 10 || state == 13)
+			{
+				input_fields.set_request_type(tmp_buff, tmp_len);
+				tmp_len = 0;
+				state = 14;
+			}
+			else if (state == 3 || state == 14)
 				tmp_buff[tmp_len++] = user_input[i];
 			else
 				return false;
 			break;
 		default:
-			if (state == 2 || state == 3)
+			if (state == 2 || state == 3 || state == 14)
 				tmp_buff[tmp_len++] = user_input[i];
 			else
 				return false;
@@ -98,6 +130,11 @@ bool User_input_util::extract(const char* user_input, const int input_len, User_
 	if (state == 3)
 	{
 		input_fields.set_data(tmp_buff, tmp_len);
+		return true;
+	}
+	else if (state == 14)
+	{
+		input_fields.set_toname(tmp_buff, tmp_len);
 		return true;
 	}
 	else
